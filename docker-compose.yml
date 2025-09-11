@@ -17,8 +17,8 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - coaching-system-backend_coaching_network
+      - file-manager-network
 
 networks:
-  coaching-system-backend_coaching_network:
-    external: true
+  file-manager-network:
+    driver: bridge
