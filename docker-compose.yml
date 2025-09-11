@@ -8,7 +8,7 @@ services:
     ports:
       - "3003:80"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8003}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://drive-backend.aiwaverider.com}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]

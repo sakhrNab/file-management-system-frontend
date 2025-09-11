@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       // Login and get JWT token
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003'}/auth/login`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com'}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

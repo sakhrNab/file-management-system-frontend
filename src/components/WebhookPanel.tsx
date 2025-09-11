@@ -15,7 +15,7 @@ export default function WebhookPanel({ currentPath, onRefresh }: WebhookPanelPro
   const [copied, setCopied] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<any>(null);
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com';
 
   const webhookEndpoints = {
     upload: {
