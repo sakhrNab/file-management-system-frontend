@@ -105,19 +105,21 @@ export default function FileViewer({ file, onClose, onFileDeleted }: FileViewerP
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {isEditing ? (
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="text-lg font-semibold px-2 py-1 border rounded"
+                className="text-lg font-semibold px-2 py-1 border rounded flex-1 min-w-0"
                 autoFocus
               />
             ) : (
-              <h2 className="text-lg font-semibold">{file.name}</h2>
+              <h2 className="text-lg font-semibold truncate flex-1 min-w-0" title={file.name}>
+                {file.name}
+              </h2>
             )}
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
               {getFileType(file.name)}
             </span>
           </div>
@@ -225,7 +227,7 @@ export default function FileViewer({ file, onClose, onFileDeleted }: FileViewerP
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-500">File Name</label>
-                <p className="text-sm">{file.name}</p>
+                <p className="text-sm break-all" title={file.name}>{file.name}</p>
               </div>
               
               <div>

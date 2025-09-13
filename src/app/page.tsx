@@ -39,6 +39,10 @@ function FileManager() {
   const [message, setMessage] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
   const [showPathSelector, setShowPathSelector] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [bulkRenameValue, setBulkRenameValue] = useState('');
+  const [showBulkRename, setShowBulkRename] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load folder contents when path changes
@@ -239,6 +243,86 @@ function FileManager() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const toggleFileSelection = (fileName: string) => {
+    const newSelected = new Set(selectedFiles);
+    if (newSelected.has(fileName)) {
+      newSelected.delete(fileName);
+    } else {
+      newSelected.add(fileName);
+    }
+    setSelectedFiles(newSelected);
+  };
+
+  const selectAllFiles = () => {
+    setSelectedFiles(new Set(files.map(f => f.name)));
+  };
+
+  const clearSelection = () => {
+    setSelectedFiles(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFiles.size === 0) return;
+    
+    const fileCount = selectedFiles.size;
+    if (!confirm(`Are you sure you want to delete ${fileCount} file(s)?`)) return;
+    
+    setLoading(true);
+    try {
+      // Delete files directly without individual confirmations
+      for (const fileName of Array.from(selectedFiles)) {
+        const filePath = currentPath ? `${currentPath}/${fileName}`.replace(/\/+/g, '/') : fileName;
+        const response = await fetch(`${API_BASE_URL}/api/files?file_path=${encodeURIComponent(filePath)}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete ${fileName}`);
+        }
+      }
+      
+      setMessage(`${fileCount} file(s) deleted successfully!`);
+      setSelectedFiles(new Set());
+      setMultiSelectMode(false);
+      loadFolderContents(); // Refresh the list
+    } catch (error) {
+      setMessage('Error deleting some files');
+    }
+    setLoading(false);
+  };
+
+  const handleBulkRename = async () => {
+    if (selectedFiles.size === 0 || !bulkRenameValue.trim()) return;
+    
+    setLoading(true);
+    try {
+      for (const fileName of Array.from(selectedFiles)) {
+        const filePath = currentPath ? `${currentPath}/${fileName}`.replace(/\/+/g, '/') : fileName;
+        const newName = `${bulkRenameValue}_${fileName}`;
+        
+        const response = await fetch(`${API_BASE_URL}/api/files/rename?old_path=${encodeURIComponent(filePath)}&new_name=${encodeURIComponent(newName)}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to rename ${fileName}`);
+        }
+      }
+      
+      setMessage(`${selectedFiles.size} file(s) renamed successfully!`);
+      setSelectedFiles(new Set());
+      setMultiSelectMode(false);
+      setShowBulkRename(false);
+      setBulkRenameValue('');
+      loadFolderContents();
+    } catch (error) {
+      setMessage('Error renaming some files');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -345,6 +429,56 @@ function FileManager() {
                     to: <span className="font-medium">{currentPath || 'Root'}</span>
                   </span>
                 </div>
+                
+                {!multiSelectMode ? (
+                  <button
+                    onClick={() => setMultiSelectMode(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2"
+                  >
+                    ☑️ Multi-Select
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">
+                      {selectedFiles.size} selected
+                    </span>
+                    <button
+                      onClick={selectAllFiles}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 rounded-lg text-sm"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 rounded-lg text-sm"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setShowBulkRename(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg text-sm"
+                      disabled={selectedFiles.size === 0}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg text-sm"
+                      disabled={selectedFiles.size === 0}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMultiSelectMode(false);
+                        setSelectedFiles(new Set());
+                      }}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-3 rounded-lg text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
                 
                 {currentPath && (
                   <button
@@ -477,20 +611,51 @@ function FileManager() {
                     <h4 className="text-md font-medium text-gray-700 mb-2">Files:</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                          <div className="flex items-center gap-2">
-                            <span className="text-blue-500">📄</span>
-                            <div>
-                              <div className="font-medium">{file.name}</div>
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border group"
+                          title={file.name.length > 30 ? `Full filename: ${file.name}` : ''}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {multiSelectMode && (
+                              <button
+                                onClick={() => toggleFileSelection(file.name)}
+                                className="p-1 hover:bg-gray-200 rounded flex-shrink-0"
+                                title={selectedFiles.has(file.name) ? "Deselect" : "Select"}
+                              >
+                                {selectedFiles.has(file.name) ? (
+                                  <span className="text-blue-600 text-lg">☑️</span>
+                                ) : (
+                                  <span className="text-gray-400 text-lg">☐</span>
+                                )}
+                              </button>
+                            )}
+                            <span className="text-blue-500 flex-shrink-0">📄</span>
+                            <div className="flex-1 min-w-0">
+                              <div 
+                                className="font-medium truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg cursor-help" 
+                                title={`Full filename: ${file.name}`}
+                                style={{
+                                  maxWidth: '200px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {file.name}
+                              </div>
                               <div className="text-sm text-gray-500">{formatFileSize(file.size)}</div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleDeleteFile(file.name)}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Delete
-                          </button>
+                          {!multiSelectMode && (
+                            <button
+                              onClick={() => handleDeleteFile(file.name)}
+                              className="text-red-600 hover:text-red-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-red-100 rounded transition-colors"
+                              title="Delete file"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -517,6 +682,46 @@ function FileManager() {
           />
         </div>
       </main>
+
+      {/* Bulk Rename Modal */}
+      {showBulkRename && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h4 className="text-lg font-semibold mb-4">
+              Bulk Rename ({selectedFiles.size} files)
+            </h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Files will be renamed with the prefix you provide. For example: "backup_" will rename "file.txt" to "backup_file.txt"
+            </p>
+            <input
+              type="text"
+              value={bulkRenameValue}
+              onChange={(e) => setBulkRenameValue(e.target.value)}
+              placeholder="Enter prefix (e.g., backup_)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              autoFocus
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowBulkRename(false);
+                  setBulkRenameValue('');
+                }}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkRename}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+                disabled={!bulkRenameValue.trim()}
+              >
+                Rename All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
