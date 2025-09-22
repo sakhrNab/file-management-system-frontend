@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { FileInfo } from '@/types';
-import { downloadFile, downloadBulkFiles, deleteFile, renameFile } from '@/lib/api';
-import { BulkDownloadRequest } from '@/types';
+import { downloadFile, deleteFile, renameFile, getAuthenticatedFileUrl } from '@/lib/api';
 import { Download, Trash2, Edit2, X, Check, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -20,9 +19,13 @@ export default function FileViewer({ file, onClose, onFileDeleted }: FileViewerP
 
   if (!file) return null;
 
-  const handleDownload = () => {
-    const url = downloadFile(file.path);
-    window.open(url, '_blank');
+  const handleDownload = async () => {
+    try {
+      await downloadFile(file.path);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Download failed. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
@@ -186,7 +189,7 @@ export default function FileViewer({ file, onClose, onFileDeleted }: FileViewerP
             {isImage(file.name) && (
               <div className="text-center">
                 <img
-                  src={downloadFile(file.path)}
+                  src={getAuthenticatedFileUrl(file.path)}
                   alt={file.name}
                   className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
                 />
@@ -196,7 +199,7 @@ export default function FileViewer({ file, onClose, onFileDeleted }: FileViewerP
             {isVideo(file.name) && (
               <div className="text-center">
                 <video
-                  src={downloadFile(file.path)}
+                  src={getAuthenticatedFileUrl(file.path)}
                   controls
                   className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
                 >

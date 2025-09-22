@@ -35,8 +35,59 @@ export const renameFile = async (oldPath: string, newName: string): Promise<void
   });
 };
 
-export const downloadFile = (filePath: string): string => {
-  return `${API_BASE_URL}/api/files/download${filePath}`;
+export const downloadFile = async (filePath: string): Promise<void> => {
+  const token = sessionStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/files/download${filePath}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the filename from the response headers or file path
+    const contentDisposition = response.headers.get('content-disposition');
+    let filename = filePath.split('/').pop() || 'download';
+    
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (filenameMatch) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Create blob and download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Download error:', error);
+    throw error;
+  }
+};
+
+export const getAuthenticatedFileUrl = (filePath: string): string => {
+  const token = sessionStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  
+  // Use the download-token endpoint for authenticated URLs
+  return `${API_BASE_URL}/api/files/download-token${filePath}?token=${encodeURIComponent(token)}`;
 };
 
 export const downloadBulkFiles = async (request: BulkDownloadRequest): Promise<Blob> => {

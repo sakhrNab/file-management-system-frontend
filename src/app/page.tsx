@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { downloadFile } from '@/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com';
 
@@ -710,10 +711,14 @@ function FileManager() {
                           {!multiSelectMode && (
                             <div className="flex gap-1">
                               <button
-                                onClick={() => {
-                                  const filePath = currentPath ? `${currentPath}/${file.name}`.replace(/\/+/g, '/') : file.name;
-                                  const downloadUrl = `${API_BASE_URL}/api/files/download/${filePath}`;
-                                  window.open(downloadUrl, '_blank');
+                                onClick={async () => {
+                                  try {
+                                    const filePath = currentPath ? `${currentPath}/${file.name}`.replace(/\/+/g, '/') : file.name;
+                                    await downloadFile(`/${filePath}`);
+                                  } catch (error) {
+                                    console.error('Download failed:', error);
+                                    alert('Download failed. Please try again.');
+                                  }
                                 }}
                                 className="text-blue-600 hover:text-blue-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-blue-100 rounded transition-colors"
                                 title="Download file"
