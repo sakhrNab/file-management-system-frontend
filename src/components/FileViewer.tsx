@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { FileInfo } from '@/types';
-import { downloadFile, deleteFile, renameFile } from '@/lib/api';
+import { downloadFile, downloadBulkFiles, deleteFile, renameFile } from '@/lib/api';
+import { BulkDownloadRequest } from '@/types';
 import { Download, Trash2, Edit2, X, Check, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 

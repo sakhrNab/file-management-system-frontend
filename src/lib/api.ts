@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { FileInfo, FolderStatus, WebhookResponse, FolderCreate, FolderRename, UploadResponse } from '@/types';
+import { FileInfo, FolderStatus, WebhookResponse, FolderCreate, FolderRename, UploadResponse, BulkDownloadRequest } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com';
 
@@ -37,6 +37,13 @@ export const renameFile = async (oldPath: string, newName: string): Promise<void
 
 export const downloadFile = (filePath: string): string => {
   return `${API_BASE_URL}/api/files/download${filePath}`;
+};
+
+export const downloadBulkFiles = async (request: BulkDownloadRequest): Promise<Blob> => {
+  const response = await api.post('/api/files/download-bulk', request, {
+    responseType: 'blob',
+  });
+  return response.data;
 };
 
 export const listAllFiles = async (folderPath: string = ''): Promise<{ files: FileInfo[]; count: number }> => {

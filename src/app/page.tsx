@@ -323,6 +323,59 @@ function FileManager() {
     setLoading(false);
   };
 
+  const handleBulkDownload = async () => {
+    if (selectedFiles.size === 0) return;
+    
+    setLoading(true);
+    try {
+      // Create file paths for selected files
+      const filePaths = Array.from(selectedFiles).map(fileName => {
+        const filePath = currentPath ? `${currentPath}/${fileName}`.replace(/\/+/g, '/') : fileName;
+        return `/${filePath}`;
+      });
+      
+      // Create archive name based on current path and timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const folderName = currentPath ? currentPath.split('/').pop() : 'root';
+      const archiveName = `${folderName}_${timestamp}.zip`;
+      
+      const response = await fetch(`${API_BASE_URL}/api/files/download-bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          file_paths: filePaths,
+          archive_name: archiveName
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create archive');
+      }
+      
+      // Download the ZIP file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = archiveName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setMessage(`Downloaded ${selectedFiles.size} file(s) as ${archiveName}`);
+      setSelectedFiles(new Set());
+      setMultiSelectMode(false);
+    } catch (error) {
+      console.error('Bulk download error:', error);
+      setMessage('Error creating download archive');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -460,6 +513,13 @@ function FileManager() {
                       disabled={selectedFiles.size === 0}
                     >
                       Rename
+                    </button>
+                    <button
+                      onClick={handleBulkDownload}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg text-sm"
+                      disabled={selectedFiles.size === 0}
+                    >
+                      Download
                     </button>
                     <button
                       onClick={handleBulkDelete}
@@ -648,13 +708,26 @@ function FileManager() {
                             </div>
                           </div>
                           {!multiSelectMode && (
-                            <button
-                              onClick={() => handleDeleteFile(file.name)}
-                              className="text-red-600 hover:text-red-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-red-100 rounded transition-colors"
-                              title="Delete file"
-                            >
-                              Delete
-                            </button>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  const filePath = currentPath ? `${currentPath}/${file.name}`.replace(/\/+/g, '/') : file.name;
+                                  const downloadUrl = `${API_BASE_URL}/api/files/download/${filePath}`;
+                                  window.open(downloadUrl, '_blank');
+                                }}
+                                className="text-blue-600 hover:text-blue-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-blue-100 rounded transition-colors"
+                                title="Download file"
+                              >
+                                Download
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFile(file.name)}
+                                className="text-red-600 hover:text-red-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-red-100 rounded transition-colors"
+                                title="Delete file"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}

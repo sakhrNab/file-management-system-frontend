@@ -35,3 +35,8 @@ export interface UploadResponse {
   size: number;
   url: string;
 }
+
+export interface BulkDownloadRequest {
+  file_paths: string[];
+  archive_name?: string;
+}
