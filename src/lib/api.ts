@@ -8,6 +8,20 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Add request interceptor to include auth token in all requests
+api.interceptors.request.use(
+  (config) => {
+    const token = sessionStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // File operations
 export const uploadFile = async (file: File, folderPath: string = ''): Promise<UploadResponse> => {
   const formData = new FormData();
