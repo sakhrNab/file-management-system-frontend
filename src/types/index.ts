@@ -40,3 +40,8 @@ export interface BulkDownloadRequest {
   file_paths: string[];
   archive_name?: string;
 }
+
+export interface FileMove {
+  file_path: string;
+  destination_folder: string;
+}

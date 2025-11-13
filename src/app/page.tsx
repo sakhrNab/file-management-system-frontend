@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { downloadFile } from '@/lib/api';
+import { downloadFile, moveFile } from '@/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com';
 
@@ -44,6 +44,9 @@ function FileManager() {
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [bulkRenameValue, setBulkRenameValue] = useState('');
   const [showBulkRename, setShowBulkRename] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [fileToMove, setFileToMove] = useState<FileItem | null>(null);
+  const [moveDestination, setMoveDestination] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load folder contents when path changes
@@ -207,6 +210,49 @@ function FileManager() {
       }
     } catch (error) {
       setMessage(`Error deleting file: ${error}`);
+    }
+    setLoading(false);
+  };
+
+  const handleMoveFile = async (file: FileItem) => {
+    setFileToMove(file);
+    setMoveDestination('');
+    setShowMoveModal(true);
+  };
+
+  const confirmMoveFile = async () => {
+    if (!fileToMove) return;
+
+    setLoading(true);
+    try {
+      const filePath = fileToMove.path.startsWith('/') ? fileToMove.path.slice(1) : fileToMove.path;
+      const result = await moveFile({
+        file_path: filePath,
+        destination_folder: moveDestination.trim() || ''
+      });
+
+      if (result.success) {
+        setMessage(`File "${fileToMove.name}" moved successfully to "${moveDestination}"!`);
+        setShowMoveModal(false);
+        setFileToMove(null);
+        setMoveDestination('');
+        loadFolderContents(); // Refresh the list
+        loadAllFolders(); // Refresh the folder browser
+      } else {
+        setMessage(`Error moving file: ${result.message}`);
+      }
+    } catch (error: any) {
+      console.error('Error moving file:', error);
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'object' && detail.error === 'duplicate_file') {
+          setMessage(`Cannot move: ${detail.message}. ${detail.suggested_action}`);
+        } else {
+          setMessage(`Error moving file: ${JSON.stringify(detail)}`);
+        }
+      } else {
+        setMessage(`Error moving file: ${error.message || 'Unknown error'}`);
+      }
     }
     setLoading(false);
   };
@@ -726,6 +772,13 @@ function FileManager() {
                                 Download
                               </button>
                               <button
+                                onClick={() => handleMoveFile(file)}
+                                className="text-green-600 hover:text-green-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-green-100 rounded transition-colors"
+                                title="Move file"
+                              >
+                                Move
+                              </button>
+                              <button
                                 onClick={() => handleDeleteFile(file.name)}
                                 className="text-red-600 hover:text-red-800 text-sm flex-shrink-0 px-2 py-1 hover:bg-red-100 rounded transition-colors"
                                 title="Delete file"
@@ -795,6 +848,55 @@ function FileManager() {
                 disabled={!bulkRenameValue.trim()}
               >
                 Rename All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move File Modal */}
+      {showMoveModal && fileToMove && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h4 className="text-lg font-semibold mb-4">Move File</h4>
+            <p className="text-sm text-gray-600 mb-2">
+              Moving: <strong>{fileToMove.name}</strong>
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              Current location: {currentPath || 'Root'}
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Destination Folder Path:
+            </label>
+            <input
+              type="text"
+              value={moveDestination}
+              onChange={(e) => setMoveDestination(e.target.value)}
+              placeholder="e.g., videos/instagram/ai.waverider (empty for root)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 mb-4">
+              Tip: Use the path selector above to browse available folders
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowMoveModal(false);
+                  setFileToMove(null);
+                  setMoveDestination('');
+                }}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmMoveFile}
+                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg"
+                disabled={loading}
+              >
+                {loading ? 'Moving...' : 'Move'}
               </button>
             </div>
           </div>

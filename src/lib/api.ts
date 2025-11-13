@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { FileInfo, FolderStatus, WebhookResponse, FolderCreate, FolderRename, UploadResponse, BulkDownloadRequest } from '@/types';
+import { FileInfo, FolderStatus, WebhookResponse, FolderCreate, FolderRename, UploadResponse, BulkDownloadRequest, FileMove } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://drive-backend.aiwaverider.com';
 
@@ -33,6 +33,11 @@ export const renameFile = async (oldPath: string, newName: string): Promise<void
   await api.put('/api/files/rename', null, {
     params: { old_path: oldPath, new_name: newName }
   });
+};
+
+export const moveFile = async (moveData: FileMove): Promise<WebhookResponse> => {
+  const response = await api.put('/api/files/move', moveData);
+  return response.data;
 };
 
 export const downloadFile = async (filePath: string): Promise<void> => {
@@ -155,6 +160,11 @@ export const webhookRenameFile = async (oldPath: string, newName: string): Promi
   const response = await api.post('/webhook/files/rename', null, {
     params: { old_path: oldPath, new_name: newName }
   });
+  return response.data;
+};
+
+export const webhookMoveFile = async (moveData: FileMove): Promise<WebhookResponse> => {
+  const response = await api.post('/webhook/files/move', moveData);
   return response.data;
 };
 
